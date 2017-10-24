@@ -1,7 +1,7 @@
 {
   "name": "searcherer",
   "version": "0.1.0",
-  "description": "Searches file contents",
+  "description": "Searches contents of files",
   "homepage": "https://github.com/NotNinja/searcherer",
   "bugs": {
     "url": "https://github.com/NotNinja/searcherer/issues"
