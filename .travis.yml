@@ -1,0 +1,15 @@
+sudo: false
+language: node_js
+node_js:
+  - "4"
+  - "6"
+  - "8"
+before_script:
+  - npm install -g npm@latest
+script:
+  - npm test
+notifications:
+  slack:
+    rooms:
+      - secure: LFJ2w3uB1YGkv3VlVJ0AL6uy3xhrfQCmm65VUIgr5vY1Csz+zqq1XFPAvdAvpZbpAAstQYRhNENMcWnG7Tw5b7Hzn16ga1M8uhGyWIvVC3LAv4t/b5K3RG506TIt9+3pgNBo+QTvL18cWJoJofAbc8iEePzMg+c8Ouujn0QaPKCXgfs3YUT0novKm31yZLY6ovtIE1/k8WiT530QDCWblONo1mLcjjfhne/o+r5l/TsShQWfXx8bwWVL/fKJ1UM/HR4Pq7xORe/ieE2BJt3xaSHhbiGTrTHuKEZwZG4YOANUoXur2FVNmE+XeTuDOWoZiVUXUQyGA+QkelklwPxppjtyi04DM9tabrY+X027xLkPJgWDuTmkhUlnA9IuM506irIF6bXQUW85PgmA1T/p7rdTOZeWlVhLIViQyDGwX2dDTFwYI2x8PtxXxDHkju/tteSy5QkmzEk6790Nt4w4UR9JplzmA8MayGwsbn0BMXCuRXs2c5sqx2YvmZkzWzF1ud0zDSNPVy5JHZXWSU8kCWszMBSoV7IFpt06Dgg/PfXHJC8mwVGyw7ZkmrQ7wAPr9e8uTD1IpBfZWf8kC4/3eyzSd6/2gOw1OnUaeFk39dCp5u/U/F9P8slbEXR39CZ98P9ZmWmi0dVrJwTfbKLLE7Tph5d+Uk5tnAkWqPG8um8=
+    on_success: change

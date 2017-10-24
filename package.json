@@ -1,0 +1,37 @@
+{
+  "name": "searcherer",
+  "version": "0.1.0",
+  "description": "Searches file contents",
+  "homepage": "https://github.com/NotNinja/searcherer",
+  "bugs": {
+    "url": "https://github.com/NotNinja/searcherer/issues"
+  },
+  "author": {
+    "name": "Alasdair Mercer",
+    "email": "mercer.alasdair@gmail.com",
+    "url": "https://not.ninja"
+  },
+  "license": "MIT",
+  "keywords": [
+    "search",
+    "file"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/NotNinja/searcherer.git"
+  },
+  "devDependencies": {
+    "eslint": "^4.9.0",
+    "eslint-config-notninja": "^0.2.3"
+  },
+  "bin": {
+    "searcherer": "bin/searcherer"
+  },
+  "main": "src/searcherer.js",
+  "scripts": {
+    "test": "eslint \"src/**/*.js\""
+  },
+  "engines": {
+    "node": ">=4"
+  }
+}

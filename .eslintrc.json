@@ -1,0 +1,6 @@
+{
+  "extends": "notninja/es4",
+  "env": {
+    "node": true
+  }
+}
