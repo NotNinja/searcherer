@@ -22,8 +22,6 @@
 
 'use strict';
 
-// TODO: complete
-
 const { Command } = require('commander');
 const d = require('debug');
 const debug = d('searcherer:cli');
@@ -39,6 +37,7 @@ const Style = require('./style');
 
 const findFiles = util.promisify(glob);
 
+const _baseDir = Symbol('baseDir');
 const _command = Symbol('command');
 const _errorStream = Symbol('errorStream');
 const _inputStream = Symbol('inputStream');
@@ -67,6 +66,7 @@ class CLI {
    * @public
    */
   constructor(options = {}) {
+    this[_baseDir] = options.baseDir || process.cwd();
     this[_errorStream] = options.errorStream || process.stderr;
     this[_inputStream] = options.inputStream || process.stdin;
     this[_outputStream] = options.outputStream || process.stdout;
@@ -84,9 +84,9 @@ class CLI {
   }
 
   /**
-   * TODO: document
+   * Writes the specified <code>message</code> to the error stream for this {@link CLI}.
    *
-   * @param {string} message -
+   * @param {string} message - the message to be written to the error stream
    * @return {void}
    * @public
    */
@@ -97,8 +97,10 @@ class CLI {
   /**
    * Parses the command-line (process) arguments provided and performs the necessary actions based on the parsed input.
    *
+   * An error will occur if any problem arises.
+   *
    * @param {string[]} [args] - the arguments to be parsed
-   * @return {Promise.<void, Error>}
+   * @return {Promise.<void, Error>} A <code>Promise</code> for any asynchronous file traversal and/or buffer reading.
    * @public
    */
   async parse(args = []) {
@@ -118,12 +120,12 @@ class CLI {
     }
 
     if (command.style) {
-      options.style = Style.find(command.style);
+      options.style = Style.findStyle(command.style);
       if (!options.style) {
         throw new Error(`Invalid style: ${command.style}`);
       }
     } else {
-      options.style = Style.getDefault();
+      options.style = Style.getDefaultStyle();
     }
 
     debug('Processing arguments: %j', command.args);
@@ -134,6 +136,7 @@ class CLI {
       for (const arg of command.args) {
         const files = await findFiles(arg, {
           absolute: true,
+          cwd: this.baseDir,
           nodir: true
         });
 
@@ -157,8 +160,7 @@ class CLI {
   }
 
   async [_searchFiles](filePaths, options) {
-    const searcherer = new Searcherer();
-    searcherer.register(options.patterns);
+    const searcherer = new Searcherer(options.patterns);
 
     for (const filePath of filePaths) {
       const results = await searcherer.searchFile(filePath, {
@@ -166,17 +168,30 @@ class CLI {
         encoding: options.encoding
       });
 
-      this[_outputStream].write(options.style.render(results, { filePath }));
+      this[_outputStream].write(options.style.render(results, {
+        cli: this,
+        filePath
+      }));
     }
   }
 
   [_searchValue](value, options, filePath) {
-    const searcherer = new Searcherer();
-    searcherer.register(options.patterns);
+    const results = Searcherer.search(value, options.patterns, { caseSensitive: options.caseSensitive });
 
-    const results = searcherer.search(value, { caseSensitive: options.caseSensitive });
+    this[_outputStream].write(options.style.render(results, {
+      cli: this,
+      filePath
+    }));
+  }
 
-    this[_outputStream].write(options.style.render(results, { filePath }));
+  /**
+   * Returns the base directory for this {@link CLI}.
+   *
+   * @return {string} The base directory.
+   * @public
+   */
+  get baseDir() {
+    return this[_baseDir];
   }
 
 }
@@ -187,6 +202,7 @@ module.exports = CLI;
  * The options that can be passed to the {@link CLI} constructor.
  *
  * @typedef {Object} CLI~Options
+ * @property {string} [baseDir=process.cwd()] - The base directory to be used.
  * @property {Writable} [errorStream=process.stderr] - The stream for error messages to be written to.
  * @property {Readable} [inputStream=process.stdin] - The stream for input to be read from.
  * @property {Writable} [outputStream=process.stdout] - The stream for output messages to be written to.

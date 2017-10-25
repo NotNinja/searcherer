@@ -22,8 +22,6 @@
 
 'use strict';
 
-// TODO: complete
-
 const chalk = require('chalk');
 const debug = require('debug')('searcherer:api');
 const { EventEmitter } = require('events');
@@ -37,146 +35,226 @@ const Dictionary = require('./Dictionary');
 
 const readFile = util.promisify(fs.readFile);
 
+const _addDictionaryFile = Symbol('addDictionaryFile');
 const _dictionaries = Symbol('dictionaries');
+const _searchFile = Symbol('searchFile');
 const _searchLine = Symbol('searchLine');
 
 /**
- * TODO: document
+ * Can search a string or file for patterns, treated as regular expressions.
+ *
+ * While the static methods of <code>Searcherer</code> for searching work great, it's encouraged to create
+ * <code>Searcherer</code> instances when dealing with multiple dictionaries (collections of search patterns).
+ * Additionally, it's <b>highly recommended</b> that <code>Dictionary</code> instances are created when searching a
+ * large number of patterns and/or using the same patterns to search many different strings/files. Doing so will
+ * increase performance as regular expressions compiled from the patterns are cached.
  *
  * @public
  */
 class Searcherer extends EventEmitter {
 
   /**
-   * TODO: document
+   * Searches the specified <code>value</code> for the patterns within the specified <code>dictionary</code> using the
+   * <code>options</code> provided.
    *
-   * @param {?string} value -
-   * @param {Dictionary|string[]} dictionary -
-   * @param {Searcherer~SearchOptions} [options] -
-   * @return {Searcherer~Result[]}
+   * <code>dictionary</code> can either be a {@link Dictionary} instance or one or more of search patterns from which a
+   * {@link Dictionary} instance can be created.
+   *
+   * @param {?string} value - the value to be searched (may be <code>null</code>)
+   * @param {Dictionary|string|string[]} dictionary - the {@link Dictionary} to be used or the search pattern(s) to be
+   * used to create it
+   * @param {Searcherer~SearchOptions} [options] - the options to be used
+   * @return {Searcherer~Result[]} The search results.
    * @public
    */
   static search(value, dictionary, options = {}) {
-    const searcherer = new Searcherer();
-    searcherer.register(dictionary);
-
+    const searcherer = new Searcherer(dictionary);
     return searcherer.search(value, options);
   }
 
   /**
-   * TODO: document
+   * Searches the contents that are asynchronously read from the file at the specified path for the patterns within the
+   * specified <code>dictionary</code> using the <code>options</code> provided.
    *
-   * @param {string} filePath -
-   * @param {Dictionary|string[]} dictionary -
-   * @param {Searcherer~SearchFileOptions} [options] -
-   * @return {Promise.<Searcherer~Result[], Error>}
+   * <code>dictionary</code> can either be a {@link Dictionary} instance or one or more of search patterns from which a
+   * {@link Dictionary} instance can be created.
+   *
+   * The <code>encoding</code> option can be used to specify how the contents of the file are encoded.
+   *
+   * An error will occur if the file cannot be read.
+   *
+   * @param {string} filePath - the path of the file whose contents are to be searched
+   * @param {Dictionary|string|string[]} dictionary - the {@link Dictionary} to be used or the search pattern(s) to be
+   * used to create it
+   * @param {Searcherer~SearchFileOptions} [options] - the options to be used
+   * @return {Promise.<Searcherer~Result[], Error>} A <code>Promise</code> for the asynchronous file reading that is
+   * resolved with the search results.
+   * @see {@link Searcherer.searchFileSync}
    * @public
    */
   static searchFile(filePath, dictionary, options = {}) {
-    const searcherer = new Searcherer();
-    searcherer.register(dictionary);
-
+    const searcherer = new Searcherer(dictionary);
     return searcherer.searchFile(filePath, options);
   }
 
   /**
-   * TODO: document
+   * Searches the contents that are synchronously read from the file at the specified path for the patterns within the
+   * specified <code>dictionary</code> using the <code>options</code> provided.
    *
-   * @param {string} filePath -
-   * @param {Dictionary|string[]} dictionary -
-   * @param {Searcherer~SearchFileOptions} [options] -
-   * @return {Searcherer~Result[]}
-   * @throws {Error}
+   * <code>dictionary</code> can either be a {@link Dictionary} instance or one or more of search patterns from which a
+   * {@link Dictionary} instance can be created.
+   *
+   * The <code>encoding</code> option can be used to specify how the contents of the file are encoded.
+   *
+   * An error will occur if the file cannot be read.
+   *
+   * @param {string} filePath - the path of the file whose contents are to be searched
+   * @param {Dictionary|string|string[]} dictionary - the {@link Dictionary} to be used or the search pattern(s) to be
+   * used to create it
+   * @param {Searcherer~SearchFileOptions} [options] - the options to be used
+   * @return {Searcherer~Result[]} The search results.
+   * @throws {Error} If the file cannot be read.
+   * @see {@link Searcherer.searchFile}
    * @public
    */
   static searchFileSync(filePath, dictionary, options = {}) {
-    const searcherer = new Searcherer();
-    searcherer.register(dictionary);
-
+    const searcherer = new Searcherer(dictionary);
     return searcherer.searchFileSync(filePath, options);
   }
 
   /**
-   * TODO: document
+   * Creates an instance of {@link Searcherer}.
    *
+   * Optionally, <code>dictionary</code> can be provided so that {@link Searcherer} is initialized with a single
+   * {@link Dictionary}.
+   *
+   * <code>dictionary</code> can either be a {@link Dictionary} instance or one or more of search patterns from which a
+   * {@link Dictionary} instance can be created.
+   *
+   * @param {Dictionary|string|string[]} [dictionary] - an initial {@link Dictionary} or the search pattern(s) to be
+   * used to create it
    * @public
    */
-  constructor() {
+  constructor(dictionary) {
     super();
 
     this[_dictionaries] = new Set();
+
+    if (dictionary) {
+      this.addDictionary(dictionary);
+    }
   }
 
   /**
-   * TODO: document
+   * Adds the specified <code>dictionary</code> to this {@link Searcherer}.
    *
-   * @param {Dictionary|string[]} dictionary -
-   * @return {void}
-   * @fires Searcherer#register
+   * <code>dictionary</code> can either be a {@link Dictionary} instance or one or more of search patterns from which a
+   * {@link Dictionary} instance can be created.
+   *
+   * @param {Dictionary|string|string[]} dictionary - the {@link Dictionary} to be added or the search pattern(s) to be
+   * used to create it
+   * @return {Dictionary} A reference to <code>dictionary</code> if it's an instance of {@link Dictionary}; otherwise
+   * the instance created based on <code>dictionary</code>.
    * @public
    */
-  register(dictionary) {
-    if (Array.isArray(dictionary)) {
+  addDictionary(dictionary) {
+    if (typeof dictionary === 'string' || Array.isArray(dictionary)) {
       dictionary = new Dictionary({ patterns: dictionary });
     }
 
     this[_dictionaries].add(dictionary);
 
-    /**
-     * TODO: document
-     *
-     * @event Searcherer#register
-     * @type {Object}
-     * @property {Dictionary} dictionary -
-     */
-    this.emit('register', { dictionary });
+    return dictionary;
   }
 
   /**
-   * TODO: document
+   * Parses a {@link Dictionary} from the contents that are asynchronously read from the file at the specified path and
+   * adds it to this {@link Searcherer}.
    *
-   * @param {string} filePath -
-   * @return {Promise.<void, Error>}
-   * @fires Searcherer#register
+   * This method assumes that the contents of the file are UTF-8 encoded.
+   *
+   * An error will occur if the file cannot be read or contains invalid JSON.
+   *
+   * @param {string} filePath - the path of the file whose contents are to be read and parsed into a {@link Dictionary}
+   * and then added
+   * @return {Promise.<?Dictionary, Error>} A <code>Promise</code> for the asynchronous file reading that is resolved
+   * with the parsed {@link Dictionary} or <code>null</code> if the file contained no data.
+   * @see {@link Dictionary.parse}
+   * @see {@link Searcherer#addDictionaryFileSync}
    * @public
    */
-  async registerFile(filePath) {
+  async addDictionaryFile(filePath) {
     debug('Reading dictionary file: %s', chalk.blue(filePath));
 
     const data = await readFile(filePath, 'utf8');
-    const dictionary = Dictionary.parse(data, { name: path.basename(filePath) });
 
-    debug('Registering "%s" dictionary from file: %s', dictionary.name, chalk.blue(filePath));
-
-    this.register(dictionary);
+    return this[_addDictionaryFile](data, filePath);
   }
 
   /**
-   * TODO: document
+   * Parses a {@link Dictionary} from the contents that are synchronously read from the file at the specified path and
+   * adds it to this {@link Searcherer}.
    *
-   * @param {string} filePath -
-   * @return {void}
-   * @throws {Error}
-   * @fires Searcherer#register
+   * This method assumes that the contents of the file are UTF-8 encoded.
+   *
+   * An error will occur if the file cannot be read or contains invalid JSON.
+   *
+   * @param {string} filePath - the path of the file whose contents are to be read and parsed into a {@link Dictionary}
+   * and then added
+   * @return {?Dictionary} The parsed {@link Dictionary} or <code>null</code> if the file contained no data.
+   * @throws {Error} If the file cannot be read or contains invalid JSON.
+   * @see {@link Dictionary.parse}
+   * @see {@link Searcherer#addDictionaryFile}
    * @public
    */
-  registerFileSync(filePath) {
+  addDictionaryFileSync(filePath) {
     debug('Reading dictionary file: %s', chalk.blue(filePath));
 
     const data = fs.readFileSync(filePath, 'utf8');
-    const dictionary = Dictionary.parse(data, { name: path.basename(filePath) });
 
-    debug('Registering "%s" dictionary from file: %s', dictionary.name, chalk.blue(filePath));
-
-    this.register(dictionary);
+    return this[_addDictionaryFile](data, filePath);
   }
 
   /**
-   * TODO: document
+   * Finds the {@link Dictionary} whose name matches the specified <code>name</code> within this {@link Searcherer}.
    *
-   * @param {?string} value -
-   * @param {Searcherer~SearchOptions} [options] -
-   * @return {Searcherer~Result[]}
+   * This method will return <code>null</code> if no dictionary could be found for <code>name</code>.
+   *
+   * @param {string} name - the name of the dictionary to be returned
+   * @return {?Dictionary} The dictionary whose names matches <code>name</code> or <code>null</code> if none could be
+   * found.
+   * @public
+   */
+  static findDictionary(name) {
+    for (const dictionary of this[_dictionaries]) {
+      if (dictionary.name === name) {
+        return dictionary;
+      }
+    }
+
+    return null;
+  }
+
+  /**
+   * Returns a copy of all of the {@link Dictionary} instances within this {@link Searcherer}.
+   *
+   * @return {Dictionary[]} The dictionaries.
+   * @public
+   */
+  getDictionaries() {
+    return Array.from(this[_dictionaries]);
+  }
+
+  /**
+   * Searches the specified <code>value</code> for the patterns across all of the dictionaries within this
+   * {@link Searcherer} using the <code>options</code> provided.
+   *
+   * The <code>filter</code> option can be used to control which dictionaries will have their patterns included in the
+   * search.
+   *
+   * @param {?string} value - the value to be searched (may be <code>null</code>)
+   * @param {Searcherer~SearchOptions} [options] - the options to be used
+   * @return {Searcherer~Result[]} The search results.
    * @fires Searcherer#end
    * @fires Searcherer#result
    * @fires Searcherer#search
@@ -190,40 +268,28 @@ class Searcherer extends EventEmitter {
     debug('Searching value with %d %s using options: %o', value.length, pluralize('character', value.length), options);
 
     /**
-     * TODO: document
+     * The "search" event is fired immediately before the value is searched.
      *
      * @event Searcherer#search
      * @type {Object}
-     * @property {Searcherer~SearchOptions} options -
-     * @property {string} value -
+     * @property {Searcherer~SearchOptions} options - The options being used throughout the search.
+     * @property {string} value - The value being searched.
      */
     this.emit('search', { options, value });
 
     const lines = value.split(/\r\n?|\n/g);
     const results = [];
 
-    try {
-      lines.forEach((line, lineNumber) => this[_searchLine]({ lineNumber, line, lines, options, results, value }));
-    } catch (e) {
-      /**
-       * TODO: document
-       *
-       * @event Searcherer#error
-       * @type {Error}
-       */
-      this.emit('error', e);
-
-      throw e;
-    }
+    lines.forEach((line, lineNumber) => this[_searchLine]({ lineNumber, line, lines, options, results, value }));
 
     /**
-     * TODO: document
+     * The "end" event is fired once the search has completed.
      *
      * @event Searcherer#end
      * @type {Object}
-     * @property {Searcherer~SearchOptions} options -
-     * @property {Searcherer~Result[]} results -
-     * @property {string} value -
+     * @property {Searcherer~SearchOptions} options - The options that were used throughout the search.
+     * @property {Searcherer~Result[]} results - The search results.
+     * @property {string} value - The value that was searched.
      */
     this.emit('end', { options, results, value });
 
@@ -233,11 +299,21 @@ class Searcherer extends EventEmitter {
   }
 
   /**
-   * TODO: document
+   * Searches the contents that are asynchronously read from the file at the specified path for the patterns across all
+   * of the dictionaries within this {@link Searcherer} using the <code>options</code> provided.
    *
-   * @param {string} filePath -
-   * @param {Searcherer~SearchFileOptions} [options] -
-   * @return {Promise.<Searcherer~Result[], Error>}
+   * The <code>encoding</code> option can be used to specify how the contents of the file are encoded.
+   *
+   * The <code>filter</code> option can be used to control which dictionaries will have their patterns included in the
+   * search.
+   *
+   * An error will occur if the file cannot be read.
+   *
+   * @param {string} filePath - the path of the file whose contents are to be searched
+   * @param {Searcherer~SearchFileOptions} [options] - the options to be used
+   * @return {Promise.<Searcherer~Result[], Error>} A <code>Promise</code> for the asynchronous file reading that is
+   * resolved with the search results.
+   * @see {@link Searcherer#searchFileSync}
    * @fires Searcherer#end
    * @fires Searcherer#result
    * @fires Searcherer#search
@@ -247,18 +323,26 @@ class Searcherer extends EventEmitter {
     debug('Searching file: %s', chalk.blue(filePath));
 
     const buffer = await readFile(filePath);
-    const value = iconv.decode(buffer, options.encoding || 'utf8');
 
-    return this.search(value, options);
+    return this[_searchFile](buffer, options);
   }
 
   /**
-   * TODO: document
+   * Searches the contents that are synchronously read from the file at the specified path for the patterns across all
+   * of the dictionaries within this {@link Searcherer} using the <code>options</code> provided.
    *
-   * @param {string} filePath -
-   * @param {Searcherer~SearchFileOptions} [options] -
-   * @return {Searcherer~Result[]}
-   * @throws {Error}
+   * The <code>encoding</code> option can be used to specify how the contents of the file are encoded.
+   *
+   * The <code>filter</code> option can be used to control which dictionaries will have their patterns included in the
+   * search.
+   *
+   * An error will occur if the file cannot be read.
+   *
+   * @param {string} filePath - the path of the file whose contents are to be searched
+   * @param {Searcherer~SearchFileOptions} [options] - the options to be used
+   * @return {Searcherer~Result[]} The search results.
+   * @throws {Error} If the file cannot be read.
+   * @see {@link Searcherer#searchFile}
    * @fires Searcherer#end
    * @fires Searcherer#result
    * @fires Searcherer#search
@@ -268,9 +352,8 @@ class Searcherer extends EventEmitter {
     debug('Searching file: %s', chalk.blue(filePath));
 
     const buffer = fs.readFile(filePath);
-    const value = iconv.decode(buffer, options.encoding || 'utf8');
 
-    return this.search(value, options);
+    return this[_searchFile](buffer, options);
   }
 
   [_searchLine](context) {
@@ -292,64 +375,94 @@ class Searcherer extends EventEmitter {
         context.results.push(result);
 
         /**
-         * TODO: document
+         * The "result" event is fired immediately when a search result is found.
          *
          * @event Searcherer#result
          * @type {Object}
-         * @property {Searcherer~Result} result -
+         * @property {Searcherer~Result} result - The search result.
          */
         this.emit('result', { result });
       }
     }
   }
 
+  [_addDictionaryFile](data, filePath) {
+    const dictionary = Dictionary.parse(data, { name: path.basename(filePath) });
+
+    if (dictionary) {
+      debug('Adding "%s" dictionary from file: %s', dictionary.name, chalk.blue(filePath));
+
+      this.addDictionary(dictionary);
+    } else {
+      debug('Dictionary not found in file: %s', chalk.blue(filePath));
+    }
+
+    return dictionary;
+  }
+
+  [_searchFile](buffer, options) {
+    const value = iconv.decode(buffer, options.encoding || 'utf8');
+
+    return this.search(value, options);
+  }
+
 }
+
+Searcherer.Dictionary = Dictionary;
 
 module.exports = Searcherer;
 
 /**
- * TODO: document
+ * Contains the information for an individual line search.
+ *
+ * While this contains the original string and all of the lines being searched, individual searches are performed on a
+ * line-by-line basis.
  *
  * @typedef {Object} Searcherer~SearchContext
- * @property {number} lineNumber -
- * @property {string} line -
- * @property {string[]} lines -
- * @property {Searcherer~SearchOptions} options -
- * @property {Searcherer~Result[]} results -
- * @property {string} value -
+ * @property {number} lineNumber - The line number in relation to the whole string being searched.
+ * @property {string} line - The complete line of text being searched.
+ * @property {string[]} lines - All of the lines being searched.
+ * @property {Searcherer~SearchOptions} options - The options to be used throughout the search.
+ * @property {Searcherer~Result[]} results - The search results, so far.
+ * @property {string} value - The whole string being searched.
  */
 
 /**
- * TODO: document
+ * The options that can be passed to the various search methods on {@link Searcherer} that involve reading files (either
+ * synchronously or asynchronously).
  *
  * @typedef {Searcherer~SearchOptions} Searcherer~SearchFileOptions
- * @property {string} [encoding="utf8"] -
+ * @property {string} [encoding="utf8"] - The encoding of the contents of the file to be searched.
  */
 
 /**
- * TODO: document
+ * The options that can be passed to the various search methods on {@link Searcherer}.
  *
  * @typedef {Object} Searcherer~SearchOptions
- * @property {boolean} [caseSensitive] -
- * @property {Searcherer~DictionaryFilter} [filter] -
+ * @property {boolean} [caseSensitive] - <code>true</code> to perform a case-sensitive search on the string; otherwise
+ * <code>false</code>.
+ * @property {Searcherer~DictionaryFilter} [filter] - The function to be used to filter which dictionaries have their
+ * patterns included in the search of the string. All dictionaries are provided by default.
  */
 
 /**
- * TODO: document
+ * Returns whether the patterns within the specified <code>dictionary</code> are to be searched for within the string.
  *
  * @callback Searcherer~DictionaryFilter
- * @param {Dictionary} dictionary -
- * @return {boolean}
+ * @param {Dictionary} dictionary - the {@link Dictionary} to be checked
+ * @return {boolean} <code>true</code> to search for patterns within <code>dictionary</code>; otherwise
+ * <code>false</code>.
  */
 
 /**
- * TODO: document
+ * Contains the information for an individual search result.
  *
  * @typedef {Object} Searcherer~Result
- * @property {number} columnNumber -
- * @property {Dictionary} dictionary -
- * @property {string} line -
- * @property {number} lineNumber -
- * @property {string} match -
- * @property {string} pattern -
+ * @property {number} columnNumber - The column number at which the match was found (i.e. the start index of the match
+ * within the line).
+ * @property {Dictionary} dictionary - The {@link Dictionary} to which the pattern responsible for the match belongs.
+ * @property {string} line - The complete line of text in which the match was found.
+ * @property {number} lineNumber - The line number in relation to the whole string being searched.
+ * @property {string} match - The exact match that was found.
+ * @property {string} pattern - The pattern responsible for the match.
  */
