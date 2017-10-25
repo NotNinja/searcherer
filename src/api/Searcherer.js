@@ -28,6 +28,7 @@ const chalk = require('chalk');
 const debug = require('debug')('searcherer:api');
 const { EventEmitter } = require('events');
 const fs = require('fs');
+const iconv = require('iconv-lite');
 const path = require('path');
 const pluralize = require('pluralize');
 const util = require('util');
@@ -38,7 +39,6 @@ const readFile = util.promisify(fs.readFile);
 
 const _dictionaries = Symbol('dictionaries');
 const _searchLine = Symbol('searchLine');
-const _searchWithDictionary = Symbol('searchWithDictionary');
 
 /**
  * TODO: document
@@ -246,9 +246,10 @@ class Searcherer extends EventEmitter {
   async searchFile(filePath, options = {}) {
     debug('Searching file: %s', chalk.blue(filePath));
 
-    const data = await readFile(filePath, options.encoding || 'utf8');
+    const buffer = await readFile(filePath);
+    const value = iconv.decode(buffer, options.encoding || 'utf8');
 
-    return this.search(data, options);
+    return this.search(value, options);
   }
 
   /**
@@ -266,13 +267,14 @@ class Searcherer extends EventEmitter {
   searchFileSync(filePath, options = {}) {
     debug('Searching file: %s', chalk.blue(filePath));
 
-    const data = fs.readFileSync(filePath, options.encoding || 'utf8');
+    const buffer = fs.readFile(filePath);
+    const value = iconv.decode(buffer, options.encoding || 'utf8');
 
-    return this.search(data, options);
+    return this.search(value, options);
   }
 
   [_searchLine](context) {
-    debug('Searching line %d/%d', context.lineNumber, context.lines.length);
+    debug('Searching line %d/%d: %s', context.lineNumber, context.lines.length, context.line);
 
     let dictionaries = this[_dictionaries];
     const filter = context.options.filter;
@@ -281,37 +283,23 @@ class Searcherer extends EventEmitter {
       dictionaries = dictionaries.filter((dictionary) => filter(dictionary));
     }
 
-    dictionaries.forEach((dictionary) => this[_searchWithDictionary](dictionary, context));
-  }
+    for (const dictionary of dictionaries) {
+      debug('Searching line %d with "%s" dictionary', context.lineNumber, dictionary.name);
 
-  [_searchWithDictionary](dictionary, context) {
-    let match;
-    const regExp = dictionary.getRegExp(Boolean(context.options.caseSensitive));
+      for (const result of dictionary.search(context)) {
+        debug('Found result on line %d: %o', context.lineNumber, result);
 
-    debug('Searching line %d with "%s" dictionary', context.lineNumber, dictionary.name);
+        context.results.push(result);
 
-    while ((match = regExp.exec(context.line)) != null) {
-      const result = {
-        columnNumber: match.index,
-        dictionary,
-        line: context.line,
-        lineNumber: context.lineNumber,
-        match: match[0],
-        pattern: match[2]
-      };
-
-      debug('Found result on line %d: %o', context.lineNumber, result);
-
-      context.results.push(result);
-
-      /**
-       * TODO: document
-       *
-       * @event Searcherer#result
-       * @type {Object}
-       * @property {Searcherer~Result} result -
-       */
-      this.emit('result', { result });
+        /**
+         * TODO: document
+         *
+         * @event Searcherer#result
+         * @type {Object}
+         * @property {Searcherer~Result} result -
+         */
+        this.emit('result', { result });
+      }
     }
   }
 

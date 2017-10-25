@@ -1,5 +1,3 @@
-#!/usr/bin/env node
-
 /*
  * Copyright (C) 2017 Alasdair Mercer, !ninja
  *
@@ -24,16 +22,4 @@
 
 'use strict';
 
-const CLI = require('../src/cli');
-
-(async() => {
-  const cli = new CLI();
-
-  try {
-    await cli.parse(process.argv);
-  } catch (e) {
-    cli.error(`searcherer failed: ${e.stack}`);
-
-    process.exit(1);
-  }
-})();
+module.exports = require('./CLI');

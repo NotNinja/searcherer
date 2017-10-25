@@ -26,9 +26,10 @@
 
 const debug = require('debug')('searcherer:api');
 
+const _createRegExpMap = Symbol('createRegExpMap');
 const _name = Symbol('name');
 const _patterns = Symbol('patterns');
-const _regExp = Symbol('regExp');
+const _regExpMaps = Symbol('regExpMaps');
 
 /**
  * TODO: document
@@ -75,44 +76,9 @@ class Dictionary {
    * @public
    */
   constructor(options = {}) {
-    this[_name] = options.name;
+    this[_name] = options.name || '<unknown>';
     this[_patterns] = new Set(options.patterns || []);
-    this[_regExp] = new Map();
-  }
-
-  /**
-   * TODO: document
-   *
-   * @param {boolean} [caseSensitive] -
-   * @return {RegExp}
-   * @public
-   */
-  getRegExp(caseSensitive = false) {
-    const { name } = this;
-    const type = caseSensitive ? 'case-sensitive' : 'case-insensitive';
-
-    debug('Getting %s regular expression for "%s" dictionary', type, name);
-
-    let regExp = this[_regExp].get(caseSensitive);
-    if (regExp) {
-      debug('A %s regular expression has already been generated for "%s" dictionary', type, name);
-
-      return regExp;
-    }
-
-    // TODO: don't strip regexp characters (or do it cleanly to allow some)
-    const patterns = [];
-    for (const pattern of this[_patterns]) {
-      patterns.push(pattern.replace(/[-[\]{}()*+?.,\\^$|#\s]/g, '\\$&'));
-    }
-
-    regExp = new RegExp(`([^\\s]*)(${patterns.join('|')})([^\\s]*)`, caseSensitive ? 'g' : 'gi');
-
-    this[_regExp].set(caseSensitive, regExp);
-
-    debug('Generated %s regular expression for "%s" dictionary: %s', type, name, regExp);
-
-    return regExp;
+    this[_regExpMaps] = new Map();
   }
 
   /**
@@ -124,6 +90,32 @@ class Dictionary {
    */
   has(pattern) {
     return this[_patterns].has(pattern);
+  }
+
+  /**
+   * TODO: document
+   *
+   * @param {Searcherer~SearchContext} context -
+   * @return {Iterable.<Searcherer~Result>}
+   * @public
+   */
+  *search(context) {
+    const regExpMap = this[_createRegExpMap](Boolean(context.options.caseSensitive));
+
+    for (const [ pattern, regExp ] of regExpMap) {
+      let match;
+
+      while ((match = regExp.exec(context.line)) != null) {
+        yield {
+          columnNumber: match.index,
+          dictionary: this,
+          line: context.line,
+          lineNumber: context.lineNumber,
+          match: match[0],
+          pattern
+        };
+      }
+    }
   }
 
   /**
@@ -140,6 +132,24 @@ class Dictionary {
    */
   *[Symbol.iterator]() {
     yield* this[_patterns];
+  }
+
+  [_createRegExpMap](caseSensitive) {
+    let regExpMap = this[_regExpMaps].get(caseSensitive);
+    if (regExpMap) {
+      return regExpMap;
+    }
+
+    const flags = caseSensitive ? 'g' : 'gi';
+    regExpMap = new Map();
+
+    for (const pattern of this[_patterns]) {
+      regExpMap.set(pattern, new RegExp(pattern, flags));
+    }
+
+    this[_regExpMaps].set(caseSensitive, regExpMap);
+
+    return regExpMap;
   }
 
   /**
@@ -170,6 +180,6 @@ module.exports = Dictionary;
  * TODO: document
  *
  * @typedef {Object} Dictionary~Options
- * @property {string} [name] -
- * @property {string[]} [patterns] -
+ * @property {string} [name="<unknown>"] -
+ * @property {string[]} [patterns=[]] -
  */

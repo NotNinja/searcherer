@@ -36,8 +36,14 @@
   },
   "dependencies": {
     "chalk": "^2.3.0",
+    "commander": "^2.11.0",
     "debug": "^3.1.0",
+    "get-stdin": "^5.0.1",
     "glob": "^7.1.2",
-    "pluralize": "^7.0.0"
+    "iconv-lite": "^0.4.19",
+    "pluralize": "^7.0.0",
+    "pollock": "^0.1.0",
+    "strip-ansi": "^4.0.0",
+    "text-table": "^0.2.0"
   }
 }
