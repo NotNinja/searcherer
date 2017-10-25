@@ -22,8 +22,6 @@
 
 'use strict';
 
-// TODO: complete
-
 const debug = require('debug')('searcherer:api');
 
 const _createRegExpMap = Symbol('createRegExpMap');
@@ -32,19 +30,43 @@ const _patterns = Symbol('patterns');
 const _regExpMaps = Symbol('regExpMaps');
 
 /**
- * TODO: document
+ * Contains a dictionary of patterns, which are treated as regular expressions, that can be used to search strings.
+ *
+ * While dictionaries are mostly created internally by the static methods on {@link Searcherer}, it's encouraged to
+ * create <code>Dictionary</code> instances when searching a large number of patterns and/or using the same patterns to
+ * search many different strings/files. Doing so will increase performance as regular expressions compiled from the
+ * patterns are cached.
  *
  * @public
  */
 class Dictionary {
 
   /**
-   * TODO: document
+   * Parses the specified string into a {@link Dictionary}.
    *
-   * @param {?string} str -
-   * @param {Dictionary~Options} [defaults] -
-   * @return {?Dictionary}
-   * @throws {SyntaxError}
+   * Optionally, <code>defaults</code> can be provided to control the default values that are to be used if the data
+   * parsed from <code>str</code> is incomplete.
+   *
+   * <code>str</code> is parsed as JSON and this method is primarily intended to be used internally to parse "dictionary
+   * files" via methods on {@link Searcherer}, however, this can be used externally as well. The parsed data can be any
+   * of the following types:
+   *
+   * <ul>
+   *   <li>string - used as a single search pattern</li>
+   *   <li>array - used as search patterns</li>
+   *   <li>object - uses values of the <code>name</code> and <code>patterns</code> properties accordingly</li>
+   * </ul>
+   *
+   * This method will return <code>null</code> if <code>str</code> is <code>null</code> or the JSON is parsed to
+   * <code>null</code>.
+   *
+   * An error will occur if <code>str</code> contains invalid JSON.
+   *
+   * @param {?string} str - the string to be parsed (may be <code>null</code>)
+   * @param {Dictionary~Options} [defaults] - the default values to be used to fill missing data
+   * @return {?Dictionary} A {@link Dictionary} parsed from <code>str</code> or <code>null</code> if <code>str</code> is
+   * <code>null</code> or it's the result of being parsed as JSON.
+   * @throws {SyntaxError} If <code>str</code> contains invalid JSON.
    * @public
    */
   static parse(str, defaults = {}) {
@@ -59,10 +81,9 @@ class Dictionary {
       return null;
     }
 
-    if (Array.isArray(data)) {
+    if (typeof data === 'string' || Array.isArray(data)) {
       return new Dictionary({ patterns: data });
     }
-
     return new Dictionary({
       name: data.name || defaults.name,
       patterns: data.patterns || defaults.patterns
@@ -70,22 +91,25 @@ class Dictionary {
   }
 
   /**
-   * TODO: document
+   * Creates an instance of {@link Dictionary} using the <code>options</code> provided.
    *
-   * @param {Dictionary~Options} [options] -
+   * @param {Dictionary~Options} [options] - the options to be used
    * @public
    */
   constructor(options = {}) {
-    this[_name] = options.name || '<unknown>';
-    this[_patterns] = new Set(options.patterns || []);
+    const name = options.name || '<unknown>';
+    const patterns = options.patterns != null ? options.patterns : [];
+
+    this[_name] = name;
+    this[_patterns] = new Set(Array.isArray(patterns) ? patterns : [ patterns ]);
     this[_regExpMaps] = new Map();
   }
 
   /**
-   * TODO: document
+   * Returns whether this {@link Dictionary} contains the specified <code>pattern</code>.
    *
-   * @param {string} pattern -
-   * @return {boolean}
+   * @param {string} pattern - the pattern to be checked
+   * @return {boolean} <code>true</code> if <code>pattern</code> exits; otherwise <code>false</code>.
    * @public
    */
   has(pattern) {
@@ -93,10 +117,11 @@ class Dictionary {
   }
 
   /**
-   * TODO: document
+   * Searches the line within the specified <code>context</code> using the patterns within this {@link Dictionary} and
+   * iterates over the results.
    *
-   * @param {Searcherer~SearchContext} context -
-   * @return {Iterable.<Searcherer~Result>}
+   * @param {Searcherer~SearchContext} context - the context whose line is to be searched
+   * @return {Iterable.<Searcherer~Result>} An <code>Iterable</code> for each search result.
    * @public
    */
   *search(context) {
@@ -123,7 +148,7 @@ class Dictionary {
    * @override
    */
   toString() {
-    return this[_name] || super.toString();
+    return this[_name];
   }
 
   /**
@@ -153,9 +178,9 @@ class Dictionary {
   }
 
   /**
-   * TODO: document
+   * Returns the name of this {@link Dictionary}.
    *
-   * @return {?string}
+   * @return {string} The name.
    * @public
    */
   get name() {
@@ -163,9 +188,9 @@ class Dictionary {
   }
 
   /**
-   * TODO: document
+   * Returns a copy of the search patterns for this {@link Dictionary}.
    *
-   * @return {string[]}
+   * @return {string[]} The patterns.
    * @public
    */
   get patterns() {
@@ -177,9 +202,9 @@ class Dictionary {
 module.exports = Dictionary;
 
 /**
- * TODO: document
+ * The options that can be passed to the {@link Dictionary} constructor.
  *
  * @typedef {Object} Dictionary~Options
- * @property {string} [name="<unknown>"] -
- * @property {string[]} [patterns=[]] -
+ * @property {string} [name="<unknown>"] - The name.
+ * @property {string|string[]} [patterns=[]] - The search pattern(s).
  */

@@ -22,8 +22,6 @@
 
 'use strict';
 
-// TODO: complete
-
 const chalk = require('chalk');
 const { EOL } = require('os');
 const path = require('path');
@@ -33,7 +31,8 @@ const table = require('text-table');
 const Style = require('./Style');
 
 /**
- * TODO: document
+ * An implementation of {@link Style} that is intended to be really simple to read. Each search result is printed on its
+ * own line and contains the match location, relative file name, and the match highlighted within its own line.
  *
  * @public
  */
@@ -65,7 +64,7 @@ class SimpleStyle extends Style {
 
         return [
           `${result.lineNumber}:${result.columnNumber}`,
-          `${chalk.blue(path.relative(process.cwd(), options.filePath))}`,
+          `${chalk.blue(path.relative(options.cli.baseDir, options.filePath))}`,
           line
         ];
       }),
@@ -82,6 +81,6 @@ class SimpleStyle extends Style {
 
 }
 
-Style.add(SimpleStyle);
+Style.addStyle(SimpleStyle);
 
 module.exports = SimpleStyle;

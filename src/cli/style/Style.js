@@ -22,8 +22,6 @@
 
 'use strict';
 
-// TODO: complete
-
 const debug = require('debug')('searcherer:cli:style');
 const pollock = require('pollock');
 
@@ -34,7 +32,7 @@ const _instances = Symbol('instances');
  * Can apply a format style to the command-line output.
  *
  * Implementations should have a unique style that has a single purpose (e.g. supports a single markup language or
- * syntax) and <b>must</b> be registered using {@link Style.add} in order to be available at runtime.
+ * syntax) and <b>must</b> be registered using {@link Style.addStyle} in order to be available at runtime.
  *
  * The {@link Style#render} method is used to return the string that is to be written to the output stream based on the
  * results.
@@ -60,7 +58,7 @@ class Style {
    * created when <code>style</code> was instantiated.
    * @public
    */
-  static add(style, defaultStyle) {
+  static addStyle(style, defaultStyle) {
     /* eslint-disable new-cap */
     const instance = typeof style === 'function' ? new style() : style;
     /* eslint-enable new-cap */
@@ -90,18 +88,8 @@ class Style {
    * @return {?Style} The style whose names matches <code>name</code> or <code>null</code> if none could be found.
    * @public
    */
-  static find(name) {
+  static findStyle(name) {
     return Style[_instances].get(name);
-  }
-
-  /**
-   * TODO: document
-   *
-   * @return {Style[]}
-   * @public
-   */
-  static getAll() {
-    return Array.from(Style[_instances].values());
   }
 
   /**
@@ -110,8 +98,18 @@ class Style {
    * @return {Style} The default style.
    * @public
    */
-  static getDefault() {
+  static getDefaultStyle() {
     return Style[_default];
+  }
+
+  /**
+   * Returns a copy of all of the available {@link Style} instances.
+   *
+   * @return {Style[]} The styles.
+   * @public
+   */
+  static getStyles() {
+    return Array.from(Style[_instances].values());
   }
 
   /**
@@ -158,9 +156,9 @@ Style[_instances] = new Map();
 module.exports = Style;
 
 /**
- * TODO: document
  * The options that can be passed to the {@link Style#render} method.
  *
  * @typedef {Object} Style~RenderOptions
- * @property {string} filePath -
+ * @property {CLI} cli - The {@link CLI} responsible for the render.
+ * @property {string} filePath - The path of file being searched.
  */

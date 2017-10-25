@@ -22,8 +22,6 @@
 
 'use strict';
 
-// TODO: complete
-
 const chalk = require('chalk');
 const { EOL } = require('os');
 const pluralize = require('pluralize');
@@ -33,7 +31,9 @@ const table = require('text-table');
 const Style = require('./Style');
 
 /**
- * TODO: document
+ * The default implementation of {@link Style} that prints the match location, the match highlighted within its own
+ * line, and the search pattern responsible for the match under the path of the file that they were found in. A summary
+ * of the number of results is also printed under each group of results.
  *
  * @public
  */
@@ -84,6 +84,6 @@ class DefaultStyle extends Style {
 
 }
 
-Style.add(DefaultStyle, true);
+Style.addStyle(DefaultStyle, true);
 
 module.exports = DefaultStyle;
