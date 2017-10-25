@@ -1,5 +1,5 @@
 {
-  "extends": "notninja/es6",
+  "extends": "notninja/es8",
   "env": {
     "node": true
   }

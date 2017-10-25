@@ -27,11 +27,17 @@
   "bin": {
     "searcherer": "bin/searcherer"
   },
-  "main": "src/searcherer.js",
+  "main": "src/index.js",
   "scripts": {
     "test": "eslint \"src/**/*.js\""
   },
   "engines": {
     "node": ">=8"
+  },
+  "dependencies": {
+    "chalk": "^2.3.0",
+    "debug": "^3.1.0",
+    "glob": "^7.1.2",
+    "pluralize": "^7.0.0"
   }
 }
