@@ -32,6 +32,6 @@
     "test": "eslint \"src/**/*.js\""
   },
   "engines": {
-    "node": ">=4"
+    "node": ">=8"
   }
 }
