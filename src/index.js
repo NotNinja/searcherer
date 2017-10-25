@@ -22,4 +22,4 @@
 
 'use strict';
 
-// TODO: complete
+module.exports = require('./api');
