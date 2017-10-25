@@ -60,9 +60,6 @@ class Searcherer extends EventEmitter {
    * <code>dictionary</code> can either be a {@link Dictionary} instance or one or more of search patterns from which a
    * {@link Dictionary} instance can be created.
    *
-   * The <code>filter</code> option can be used to control which dictionaries will have their patterns included in the
-   * search.
-   *
    * @param {?string} value - the value to be searched (may be <code>null</code>)
    * @param {Dictionary|string|string[]} dictionary - the {@link Dictionary} to be used or the search pattern(s) to be
    * used to create it
@@ -83,9 +80,6 @@ class Searcherer extends EventEmitter {
    * {@link Dictionary} instance can be created.
    *
    * The <code>encoding</code> option can be used to specify how the contents of the file are encoded.
-   *
-   * The <code>filter</code> option can be used to control which dictionaries will have their patterns included in the
-   * search.
    *
    * An error will occur if the file cannot be read.
    *
@@ -111,9 +105,6 @@ class Searcherer extends EventEmitter {
    * {@link Dictionary} instance can be created.
    *
    * The <code>encoding</code> option can be used to specify how the contents of the file are encoded.
-   *
-   * The <code>filter</code> option can be used to control which dictionaries will have their patterns included in the
-   * search.
    *
    * An error will occur if the file cannot be read.
    *
@@ -416,6 +407,8 @@ class Searcherer extends EventEmitter {
   }
 
 }
+
+Searcherer.Dictionary = Dictionary;
 
 module.exports = Searcherer;
 
