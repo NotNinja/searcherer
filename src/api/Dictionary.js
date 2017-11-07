@@ -47,15 +47,17 @@ class Dictionary {
    * Optionally, <code>defaults</code> can be provided to control the default values that are to be used if the data
    * parsed from <code>str</code> is incomplete.
    *
-   * <code>str</code> is parsed as JSON and this method is primarily intended to be used internally to parse "dictionary
-   * files" via methods on {@link Searcherer}, however, this can be used externally as well. The parsed data can be any
-   * of the following types:
+   * By default, <code>str</code> is parsed as JSON and this method is primarily intended to be used internally to parse
+   * "dictionary files" via methods on {@link Searcherer}, however, this can be used externally as well. The parsed data
+   * can be any of the following types:
    *
    * <ul>
    *   <li>string - used as a single search pattern</li>
    *   <li>array - used as search patterns</li>
    *   <li>object - uses values of the <code>name</code> and <code>patterns</code> properties accordingly</li>
    * </ul>
+   *
+   * However, implementations are free to override this behavior as needed.
    *
    * This method will return <code>null</code> if <code>str</code> is <code>null</code> or the JSON is parsed to
    * <code>null</code>.
@@ -106,6 +108,38 @@ class Dictionary {
   }
 
   /**
+   * Creates a <code>RegExp</code> instance for the specified <code>pattern</code> and <code>flags</code>.
+   *
+   * @param {string} pattern - the pattern for which the <code>RegExp</code> is to be created
+   * @param {string} flags - the flags to be used
+   * @return {RegExp} A newly created <code>RegExp</code>.
+   * @protected
+   */
+  createRegExp(pattern, flags) {
+    return new RegExp(pattern, flags);
+  }
+
+  /**
+   * Creates a search result based on the information provided.
+   *
+   * @param {string} pattern - the pattern responsible for the match
+   * @param {Dictionary~RegExpMatch} match - the regular expression match
+   * @param {Searcherer~SearchContext} context - the context whose line contained the match
+   * @return {Searcherer~Result} The search result.
+   * @public
+   */
+  createResult(pattern, match, context) {
+    return {
+      columnNumber: match.index,
+      dictionary: this,
+      line: context.line,
+      lineNumber: context.lineNumber,
+      match: match[0],
+      pattern
+    };
+  }
+
+  /**
    * Returns whether this {@link Dictionary} contains the specified <code>pattern</code>.
    *
    * @param {string} pattern - the pattern to be checked
@@ -131,14 +165,7 @@ class Dictionary {
       let match;
 
       while ((match = regExp.exec(context.line)) != null) {
-        yield {
-          columnNumber: match.index,
-          dictionary: this,
-          line: context.line,
-          lineNumber: context.lineNumber,
-          match: match[0],
-          pattern
-        };
+        yield this.createResult(pattern, match, context);
       }
     }
   }
@@ -169,7 +196,7 @@ class Dictionary {
     regExpMap = new Map();
 
     for (const pattern of this[_patterns]) {
-      regExpMap.set(pattern, new RegExp(pattern, flags));
+      regExpMap.set(pattern, this.createRegExp(pattern, flags));
     }
 
     this[_regExpMaps].set(caseSensitive, regExpMap);
@@ -200,6 +227,14 @@ class Dictionary {
 }
 
 module.exports = Dictionary;
+
+/**
+ * A {@link RegExp} match.
+ *
+ * @typedef {Array} Dictionary~RegExpMatch
+ * @property {number} index - The 0-based index of the match in the string.
+ * @property {string} input - The original string.
+ */
 
 /**
  * The options that can be passed to the {@link Dictionary} constructor.

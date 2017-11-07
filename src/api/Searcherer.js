@@ -37,6 +37,7 @@ const readFile = util.promisify(fs.readFile);
 
 const _addDictionaryFile = Symbol('addDictionaryFile');
 const _dictionaries = Symbol('dictionaries');
+const _dictionaryType = Symbol('dictionaryType');
 const _searchFile = Symbol('searchFile');
 const _searchLine = Symbol('searchLine');
 
@@ -45,9 +46,9 @@ const _searchLine = Symbol('searchLine');
  *
  * While the static methods of <code>Searcherer</code> for searching work great, it's encouraged to create
  * <code>Searcherer</code> instances when dealing with multiple dictionaries (collections of search patterns).
- * Additionally, it's <b>highly recommended</b> that <code>Dictionary</code> instances are created when searching a
- * large number of patterns and/or using the same patterns to search many different strings/files. Doing so will
- * increase performance as regular expressions compiled from the patterns are cached.
+ * Additionally, it's <b>highly recommended</b> that {@link Dictionary} instances are created when searching a large
+ * number of patterns and/or using the same patterns to search many different strings/files. Doing so will increase
+ * performance as regular expressions compiled from the patterns are cached.
  *
  * @public
  */
@@ -68,7 +69,7 @@ class Searcherer extends EventEmitter {
    * @public
    */
   static search(value, dictionary, options = {}) {
-    const searcherer = new Searcherer(dictionary);
+    const searcherer = new Searcherer({ dictionary });
     return searcherer.search(value, options);
   }
 
@@ -93,7 +94,7 @@ class Searcherer extends EventEmitter {
    * @public
    */
   static searchFile(filePath, dictionary, options = {}) {
-    const searcherer = new Searcherer(dictionary);
+    const searcherer = new Searcherer({ dictionary });
     return searcherer.searchFile(filePath, options);
   }
 
@@ -118,30 +119,28 @@ class Searcherer extends EventEmitter {
    * @public
    */
   static searchFileSync(filePath, dictionary, options = {}) {
-    const searcherer = new Searcherer(dictionary);
+    const searcherer = new Searcherer({ dictionary });
     return searcherer.searchFileSync(filePath, options);
   }
 
   /**
-   * Creates an instance of {@link Searcherer}.
+   * Creates an instance of {@link Searcherer} using the <code>options</code> provided.
    *
-   * Optionally, <code>dictionary</code> can be provided so that {@link Searcherer} is initialized with a single
-   * {@link Dictionary}.
-   *
-   * <code>dictionary</code> can either be a {@link Dictionary} instance or one or more of search patterns from which a
+   * The <code>dictionary</code> option can be specified to initialize {@link Searcherer} with a single
+   * {@link Dictionary}. It can be either a {@link Dictionary} instance or one or more of search patterns from which a
    * {@link Dictionary} instance can be created.
    *
-   * @param {Dictionary|string|string[]} [dictionary] - an initial {@link Dictionary} or the search pattern(s) to be
-   * used to create it
+   * @param {Searcherer~Options} [options] - the options to be used
    * @public
    */
-  constructor(dictionary) {
+  constructor(options = {}) {
     super();
 
     this[_dictionaries] = new Set();
+    this[_dictionaryType] = options.dictionaryType || Dictionary;
 
-    if (dictionary) {
-      this.addDictionary(dictionary);
+    if (options.dictionary) {
+      this.addDictionary(options.dictionary);
     }
   }
 
@@ -159,7 +158,8 @@ class Searcherer extends EventEmitter {
    */
   addDictionary(dictionary) {
     if (typeof dictionary === 'string' || Array.isArray(dictionary)) {
-      dictionary = new Dictionary({ patterns: dictionary });
+      const DictionaryImpl = this[_dictionaryType];
+      dictionary = new DictionaryImpl({ patterns: dictionary });
     }
 
     this[_dictionaries].add(dictionary);
@@ -233,6 +233,22 @@ class Searcherer extends EventEmitter {
     }
 
     return null;
+  }
+
+  /**
+   * Parses the specified string into a {@link Dictionary} based on the <code>dictionaryType</code> option with which
+   * this {@link Searcherer} was initialized.
+   *
+   * @param {?string} str - the string to be parsed (may be <code>null</code>)
+   * @param {Dictionary~Options} [defaults] - the default values to be used to fill missing data
+   * @return {?Dictionary} A {@link Dictionary} parsed from <code>str</code> or <code>null</code> if <code>str</code> is
+   * <code>null</code> or it's the result of being parsed as JSON.
+   * @throws {SyntaxError} If <code>str</code> contains invalid JSON.
+   * @see {@link Dictionary.parse}
+   * @protected
+   */
+  parseDictionary(str, defaults = {}) {
+    return this[_dictionaryType].parse(str, defaults);
   }
 
   /**
@@ -356,6 +372,26 @@ class Searcherer extends EventEmitter {
     return Array.from(this[_dictionaries]);
   }
 
+  [_addDictionaryFile](data, filePath) {
+    const dictionary = this.parseDictionary(data, { name: path.basename(filePath) });
+
+    if (dictionary) {
+      debug('Adding "%s" dictionary from file: %s', dictionary.name, chalk.blue(filePath));
+
+      this.addDictionary(dictionary);
+    } else {
+      debug('Dictionary not found in file: %s', chalk.blue(filePath));
+    }
+
+    return dictionary;
+  }
+
+  [_searchFile](buffer, options) {
+    const value = iconv.decode(buffer, options.encoding || 'utf8');
+
+    return this.search(value, options);
+  }
+
   [_searchLine](context) {
     debug('Searching line %d/%d: %s', context.lineNumber, context.lines.length, context.line);
 
@@ -386,31 +422,43 @@ class Searcherer extends EventEmitter {
     }
   }
 
-  [_addDictionaryFile](data, filePath) {
-    const dictionary = Dictionary.parse(data, { name: path.basename(filePath) });
-
-    if (dictionary) {
-      debug('Adding "%s" dictionary from file: %s', dictionary.name, chalk.blue(filePath));
-
-      this.addDictionary(dictionary);
-    } else {
-      debug('Dictionary not found in file: %s', chalk.blue(filePath));
-    }
-
-    return dictionary;
-  }
-
-  [_searchFile](buffer, options) {
-    const value = iconv.decode(buffer, options.encoding || 'utf8');
-
-    return this.search(value, options);
-  }
-
 }
 
 Searcherer.Dictionary = Dictionary;
 
 module.exports = Searcherer;
+
+/**
+ * Returns whether the patterns within the specified <code>dictionary</code> are to be searched for within the string.
+ *
+ * @callback Searcherer~DictionaryFilter
+ * @param {Dictionary} dictionary - the {@link Dictionary} to be checked
+ * @return {boolean} <code>true</code> to search for patterns within <code>dictionary</code>; otherwise
+ * <code>false</code>.
+ */
+
+/**
+ * The options that can be passed to the {@link Searcherer} constructor.
+ *
+ * @typedef {Object} Searcherer~Options
+ * @property {Dictionary|string|string[]} [dictionary] - An initial {@link Dictionary} or the search pattern(s) to be
+ * used to create it.
+ * @property {Function} [dictionaryType=Dictionary] - The {@link Dictionary} implementation whose instances are to be
+ * created.
+ */
+
+/**
+ * Contains the information for an individual search result.
+ *
+ * @typedef {Object} Searcherer~Result
+ * @property {number} columnNumber - The column number at which the match was found (i.e. the start index of the match
+ * within the line).
+ * @property {Dictionary} dictionary - The {@link Dictionary} to which the pattern responsible for the match belongs.
+ * @property {string} line - The complete line of text in which the match was found.
+ * @property {number} lineNumber - The line number in relation to the whole string being searched.
+ * @property {string} match - The exact match that was found.
+ * @property {string} pattern - The pattern responsible for the match.
+ */
 
 /**
  * Contains the information for an individual line search.
@@ -443,26 +491,4 @@ module.exports = Searcherer;
  * <code>false</code>.
  * @property {Searcherer~DictionaryFilter} [filter] - The function to be used to filter which dictionaries have their
  * patterns included in the search of the string. All dictionaries are provided by default.
- */
-
-/**
- * Returns whether the patterns within the specified <code>dictionary</code> are to be searched for within the string.
- *
- * @callback Searcherer~DictionaryFilter
- * @param {Dictionary} dictionary - the {@link Dictionary} to be checked
- * @return {boolean} <code>true</code> to search for patterns within <code>dictionary</code>; otherwise
- * <code>false</code>.
- */
-
-/**
- * Contains the information for an individual search result.
- *
- * @typedef {Object} Searcherer~Result
- * @property {number} columnNumber - The column number at which the match was found (i.e. the start index of the match
- * within the line).
- * @property {Dictionary} dictionary - The {@link Dictionary} to which the pattern responsible for the match belongs.
- * @property {string} line - The complete line of text in which the match was found.
- * @property {number} lineNumber - The line number in relation to the whole string being searched.
- * @property {string} match - The exact match that was found.
- * @property {string} pattern - The pattern responsible for the match.
  */
