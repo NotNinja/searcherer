@@ -225,7 +225,7 @@ class Searcherer extends EventEmitter {
    * found.
    * @public
    */
-  static findDictionary(name) {
+  findDictionary(name) {
     for (const dictionary of this[_dictionaries]) {
       if (dictionary.name === name) {
         return dictionary;
