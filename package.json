@@ -1,6 +1,6 @@
 {
   "name": "searcherer",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Searches contents of files",
   "homepage": "https://github.com/NotNinja/searcherer",
   "bugs": {
@@ -20,20 +20,6 @@
     "type": "git",
     "url": "https://github.com/NotNinja/searcherer.git"
   },
-  "devDependencies": {
-    "eslint": "^4.9.0",
-    "eslint-config-notninja": "^0.2.3"
-  },
-  "bin": {
-    "searcherer": "bin/searcherer"
-  },
-  "main": "src/index.js",
-  "scripts": {
-    "test": "eslint \"src/**/*.js\""
-  },
-  "engines": {
-    "node": ">=8"
-  },
   "dependencies": {
     "chalk": "^2.3.0",
     "commander": "^2.11.0",
@@ -45,5 +31,19 @@
     "pollock": "^0.1.0",
     "strip-ansi": "^4.0.0",
     "text-table": "^0.2.0"
+  },
+  "devDependencies": {
+    "eslint": "^4.10.0",
+    "eslint-config-notninja": "^0.2.3"
+  },
+  "bin": {
+    "searcherer": "bin/searcherer"
+  },
+  "main": "src/index.js",
+  "scripts": {
+    "test": "eslint \"src/**/*.js\""
+  },
+  "engines": {
+    "node": ">=8"
   }
 }
