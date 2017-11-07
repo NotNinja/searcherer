@@ -236,16 +236,6 @@ class Searcherer extends EventEmitter {
   }
 
   /**
-   * Returns a copy of all of the {@link Dictionary} instances within this {@link Searcherer}.
-   *
-   * @return {Dictionary[]} The dictionaries.
-   * @public
-   */
-  getDictionaries() {
-    return Array.from(this[_dictionaries]);
-  }
-
-  /**
    * Searches the specified <code>value</code> for the patterns across all of the dictionaries within this
    * {@link Searcherer} using the <code>options</code> provided.
    *
@@ -354,6 +344,16 @@ class Searcherer extends EventEmitter {
     const buffer = fs.readFile(filePath);
 
     return this[_searchFile](buffer, options);
+  }
+
+  /**
+   * Returns a copy of all of the {@link Dictionary} instances within this {@link Searcherer}.
+   *
+   * @return {Dictionary[]} The dictionaries.
+   * @public
+   */
+  get dictionaries() {
+    return Array.from(this[_dictionaries]);
   }
 
   [_searchLine](context) {
