@@ -160,7 +160,7 @@ class CLI {
   }
 
   async [_searchFiles](filePaths, options) {
-    const searcherer = new Searcherer(options.patterns);
+    const searcherer = new Searcherer({ dictionary: options.patterns });
 
     for (const filePath of filePaths) {
       const results = await searcherer.searchFile(filePath, {

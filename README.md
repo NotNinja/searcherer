@@ -82,10 +82,10 @@ can be created.
 
 #### Options
 
-| Option          | Description                                                             | Default |
-| --------------- | ----------------------------------------------------------------------- | ------- |
-| `caseSensitive` | Perform case-sensitive search on `value`                                | `false` |
-| `filter`        | Function to be used to filter which dictionaries are included in search | *All*   |
+| Option           | Description                                                            | Default      |
+| ---------------- | ---------------------------------------------------------------------- | ------------ |
+| `caseSensitive` | Perform case-sensitive search on `value`                                | `false`      |
+| `filter`        | Function to be used to filter which dictionaries are included in search | *All*        |
 
 #### Examples
 
@@ -131,14 +131,12 @@ const Searcherer = require('searcherer');
 
 A synchronous version of the `Searcherer.searchFile` method.
 
-### `Searcherer([dictionary])`
+### `Searcherer([options])`
 
-Creates an instance of `Searcherer`.
+Creates an instance of `Searcherer` using the `options` provided.
 
-Optionally, `dictionary` can be provided so that `Searcherer` is initialized with a single `Dictionary`.
-
-`dictionary` can either be a `Dictionary` instance or one or more of search patterns from which a `Dictionary` instance
-can be created.
+The `dictionary` option can be specified to initialize `Searcherer` with a single `Dictionary`. It can be either a
+`Dictionary` instance or one or more of search patterns from which a `Dictionary` instance can be created.
 
 While the static methods of `Searcherer` for searching work great, it's encouraged to create `Searcherer` instances when
 dealing with multiple dictionaries (collections of search patterns). Additionally, it's **highly recommended** that
@@ -157,6 +155,13 @@ Additionally, the following instance methods exist that allow dictionaries to be
 * `Searcherer#addDictionary(dictionary)`
 * `Searcherer#addDictionaryFile(filePath)`
 * `Searcherer#addDictionaryFileSync(filePath)`
+
+#### Options
+
+| Option           | Description                                                           | Default      |
+| ---------------- | --------------------------------------------------------------------- | ------------ |
+| `dictionary`     | Initial `Dictionary` or the search pattern(s) to be used to create it | N/A          |
+| `dictionaryType` | `Dictionary` implementation whose instances are to be created         | `Dictionary` |
 
 #### Events
 
